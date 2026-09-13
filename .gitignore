@@ -1,0 +1,24 @@
+# ── 大体积原始素材（不进仓库，需要时从原始 exe 重新解包）──
+/Bilidown *.exe
+/extracted/
+
+# ── 本地环境 ──
+.DS_Store
+.npm-cache/
+.tmp-userdata/
+
+# ── 构建产物与依赖 ──
+recovered-source/node_modules/
+recovered-source/dist/
+recovered-source/dist_electron/
+
+# ── 第三方二进制：体积大且多为 GPL 授权，不入库 ──
+#   Windows 版从安装包 resources/bin/ 解出；macOS 版由
+#   tools/apply-macos-port.js 软链到系统/Motrix 的二进制
+recovered-source/bin/*.exe
+recovered-source/bin/aria2c
+recovered-source/bin/ffmpeg
+
+# ── 本机专属配置（含绝对路径，换机器需重写）──
+recovered-source/.npmrc
+recovered-source/tools/.npmrc

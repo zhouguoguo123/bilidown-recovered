@@ -1,0 +1,31 @@
+.DS_Store
+node_modules
+/dist
+/dist_electron
+
+# local env files
+.env.local
+.env.*.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 第三方外部二进制（从原安装包 resources/bin 解出，体积大，不入库）
+/bin/*.exe
+
+# 逆向工具链的依赖与本地 npm 缓存配置
+/tools/node_modules
+/tools/.npmrc
+/.npmrc

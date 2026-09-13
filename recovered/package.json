@@ -1,0 +1,14 @@
+{
+  "name": "bilidown",
+  "version": "1.2.7",
+  "private": true,
+  "author": "王子周棋洛",
+  "description": "一款简洁好用，免费纯净的B站视频下载软件",
+  "main": "background.js",
+  "dependencies": {},
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
