@@ -19,10 +19,10 @@
         退出
       </span>
       <el-radio-group v-model="setting.tray">
-        <el-radio @click="trayTip".native>
+        <el-radio :label="false" @click.native="trayTip">
           退出程序
         </el-radio>
-        <el-radio label @click="trayTip".native>
+        <el-radio :label="true" @click.native="trayTip">
           最小化到托盘
         </el-radio>
       </el-radio-group>

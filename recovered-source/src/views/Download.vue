@@ -403,6 +403,14 @@ const de = {
 const ue = new Dexie("downloadDatabase");
 ue.version(1).stores(de);
 ue.open();
+ue.checkIfTableHasData = async function (t) {
+  try {
+    const e = await ue[t].count();
+    return e > 0;
+  } catch (e) {
+    return false;
+  }
+};
 var he = ue;
 
 const qa = moment;

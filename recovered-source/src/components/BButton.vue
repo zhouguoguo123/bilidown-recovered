@@ -20,6 +20,9 @@
 
 <script>
 export default {
+  install(Vue) {
+    Vue.component(this.name, this);
+  },
   name: "BButton",
   props: {
     round: Boolean,

@@ -52,7 +52,7 @@ import tipAudioNo from '@/assets/media/no.mp3'
 import tipAudioSaoma from '@/assets/media/tip-saoma.mp3'
 import tipAudioHover from '@/assets/media/tip-hover.mp3'
 import tipAudioClick from '@/assets/media/tip-click.mp3'
-import QRCode from 'qrcode'
+import QRCode from 'qrcodejs2'
 // @restored:module-decls
 const { ipcRenderer: Yi } = window.require("electron");
 

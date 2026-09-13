@@ -113,6 +113,23 @@ const GENERATED_PLUGINS = {
 };
 
 /** Dexie 表结构（原 bundle 里是 module 级 `let de = {...}`，App 与 Download 共用） */
+/**
+ * Dexie 实例的扩展方法。
+ *
+ * 原 bundle 里它是一条**顶层属性赋值表达式语句**：
+ *   ue.checkIfTableHasData = async function (t) { ... }
+ * 生成器只索引变量/函数/类声明，这类表达式语句被整条漏掉（与缺陷 B 同源），
+ * 于是运行时抛 `he.checkIfTableHasData is not a function`。
+ */
+const CHECK_TABLE_FN = `ue.checkIfTableHasData = async function (t) {
+  try {
+    const e = await ue[t].count();
+    return e > 0;
+  } catch (e) {
+    return false;
+  }
+};`;
+
 const DEXIE_STORES = `const de = {
   downloaded: "++id,uid,upname,title,pic,bv,path,downDate,type,&vid",
   download: "++id,aModel,aSelect,aid,cid,asize,assFormatName,audioFullPath,bv,completedLength,coverFormatName,desc,downloadFolder,duration,fenpTitle,formatDuration,formatName,gid,guaxiaoFormatName,hejiTitle,index,isDownloading,paused,pic,progress,progressMB,pubdate,qn,speed,srtFormatName,status,taskStack,taskStackCache,tip,title,totalLength,type,upname,vModel,vSelect,vid,video,videoFormatName,videoFullPath,vmap,vsize,xmlFormatName,zimu"
@@ -160,7 +177,7 @@ const MODULE_DECLS = {
   'src/App.vue': [
     ELECTRON_REMOTE.replace('%s', 'xt'),
     CHILD_SPAWN.replace('%s', 'St'),
-    DEXIE_STORES + '\nconst ue = new Dexie("downloadDatabase");\nue.version(1).stores(de);\nue.open();',
+    DEXIE_STORES + '\nconst ue = new Dexie("downloadDatabase");\nue.version(1).stores(de);\nue.open();\n' + CHECK_TABLE_FN,
     ELECTRON_REMOTE.replace('%s', 'te') + '\nconst ee = te.require("fs");',
     ELECTRON_REMOTE.replace('%s', 'fe') + '\n' + ELECTRON_IPC.replace('%s', 'qe'),
     'const me = HolidayUtil;',
@@ -170,7 +187,7 @@ const MODULE_DECLS = {
     ELECTRON_REMOTE.replace('%s', 'xt'),
     CHILD_SPAWN.replace('%s', 'St'),
     ELECTRON_REMOTE.replace('%s', 'te') + '\nconst ee = te.require("fs");',
-    DEXIE_STORES + '\nconst ue = new Dexie("downloadDatabase");\nue.version(1).stores(de);\nue.open();\nvar he = ue;',
+    DEXIE_STORES + '\nconst ue = new Dexie("downloadDatabase");\nue.version(1).stores(de);\nue.open();\n' + CHECK_TABLE_FN + '\nvar he = ue;',
     'const qa = moment;',
     CHILD_EXEC.replace('%s', 'Fa'),
     ELECTRON_REMOTE.replace('%s', 'Ia') + '\nconst Na = Ia.require("fs").promises;\nconst Ya = Ia.require("path");',
@@ -617,7 +634,38 @@ const KT_TO_SHELL = { find: /(?<![\w$.])kt(?=\s*\.)/g, replace: 'shell' };
 
 const IDENT_FIXES = {
   'src/App.vue': [AUDIO_NAME, NT_TO_REQUEST, KT_TO_SHELL],
+  'src/components/BButton.vue': [{
+    // 原 bundle 在 normalizeComponent 之后给组件挂了 install：
+    //   fs.install = t => t.component(fs.name, fs)
+    // main.js 用 Vue.use(BButton) 全局注册，缺了它模板里的 <b-xxx> 会被当成
+    // 未知自定义元素（渲染不出来，控制台报 Unknown custom element）。
+    find: /^export default \{\n(  name: "BButton",)/m,
+    replace: 'export default {\n  install(Vue) {\n    Vue.component(this.name, this);\n  },\n$1',
+  }],
+  'src/components/BEmpty.vue': [{
+    // 原 bundle 在 normalizeComponent 之后给组件挂了 install：
+    //   fs.install = t => t.component(fs.name, fs)
+    // main.js 用 Vue.use(BEmpty) 全局注册，缺了它模板里的 <b-xxx> 会被当成
+    // 未知自定义元素（渲染不出来，控制台报 Unknown custom element）。
+    find: /^export default \{\n(  name: "BEmpty",)/m,
+    replace: 'export default {\n  install(Vue) {\n    Vue.component(this.name, this);\n  },\n$1',
+  }],
+  'src/components/BProgress.vue': [{
+    // 原 bundle 在 normalizeComponent 之后给组件挂了 install：
+    //   fs.install = t => t.component(fs.name, fs)
+    // main.js 用 Vue.use(BProgress) 全局注册，缺了它模板里的 <b-xxx> 会被当成
+    // 未知自定义元素（渲染不出来，控制台报 Unknown custom element）。
+    find: /^export default \{\n(  name: "BProgress",)/m,
+    replace: 'export default {\n  install(Vue) {\n    Vue.component(this.name, this);\n  },\n$1',
+  }],
   'src/components/BPlayer.vue': [{
+    // 原 bundle 在 normalizeComponent 之后给组件挂了 install：
+    //   fs.install = t => t.component(fs.name, fs)
+    // main.js 用 Vue.use(BButton) 等全局注册，缺了它模板里的 <b-button> 会被
+    // 当成未知自定义元素（渲染不出来，控制台报 Unknown custom element）。
+    find: /^export default \{\n(  name: "BPlayer",)/m,
+    replace: 'export default {\n  install(Vue) {\n    Vue.component(this.name, this);\n  },\n$1',
+  }, {
     // 原 bundle 写的是 `new (i.n(module)())`：i.n() 是 webpack 的「取默认导出」getter，
     // 调用它才拿到真正的类。生成器把 getter 调用直译成了 `Plyr()`，
     // 但 `import Plyr from 'plyr'` 之后 Plyr 已经是类本身，不能再调用。
@@ -657,6 +705,30 @@ const IDENT_FIXES = {
   }],
   'src/views/Search.vue': [AUDIO_NAME, NT_TO_REQUEST, KT_TO_SHELL],
   'src/views/Setting.vue': [AUDIO_NAME, NT_TO_REQUEST, KT_TO_SHELL, {
+    // 反编译器把 `nativeOn:{click:...}` 的 .native 修饰符追加到了引号外面，
+    // 生成 `@click="trayTip".native` —— 浏览器报
+    //   InvalidCharacterError: '.native' is not a valid attribute name
+    // 同时 `attrs:{label:!1}` / `{label:!0}` 的布尔值也丢了（只剩裸 label）。
+    // 依据原始 render：
+    //   e("el-radio",{attrs:{label:!1},nativeOn:{click:...}},[t._v("退出程序")])
+    //   e("el-radio",{attrs:{label:!0},nativeOn:{click:...}},[t._v("最小化到托盘")])
+    find: [
+      '        <el-radio @click="trayTip".native>',
+      '          退出程序',
+      '        </el-radio>',
+      '        <el-radio label @click="trayTip".native>',
+      '          最小化到托盘',
+      '        </el-radio>',
+    ].join('\n'),
+    replace: [
+      '        <el-radio :label="false" @click.native="trayTip">',
+      '          退出程序',
+      '        </el-radio>',
+      '        <el-radio :label="true" @click.native="trayTip">',
+      '          最小化到托盘',
+      '        </el-radio>',
+    ].join('\n'),
+  }, {
     // 原 bundle 里就是 `return randomRule()`（递归调用自身生成器），
     // 但 randomRule 这个标识符从来不存在 —— 按语义修成调用生成器自身
     find: /\brandomRule\(\)/g,
@@ -920,7 +992,7 @@ function rewriteFiles() {
     // 2b. i(9118) → QRCode
     if (/(?<![\w$.])i\(9118\)/.test(text)) {
       text = text.replace(/(?<![\w$.])i\(9118\)/g, 'QRCode');
-      neededAudioImports.add("import QRCode from 'qrcode'");
+      neededAudioImports.add("import QRCode from 'qrcodejs2'");
     }
 
     // 2c. 其它 i(<id>) 残留一律报出来（不允许悄悄留着）

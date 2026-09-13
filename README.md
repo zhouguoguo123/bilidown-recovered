@@ -74,12 +74,17 @@ JS 侧的差异主要来自依赖补丁版本；主进程 `background.js` 经逐
 ## 已修复的缺陷
 
 交接文档记录的 4 项（axios 单例与拦截器丢失、router/store 缺 import、`i(...)` 残留），
-以及后续发现的 8 项，其中 3 项**只有运行时才暴露**：
+以及后续发现的 11 项。其中**构建期完全发现不了、只有跑起来才暴露**的有 6 项：
 
 - **Electron 版本**：原版内嵌 Chromium 91 ⇒ Electron 13.x；用 22 会因内置 `remote` 被移除而白屏
 - **TDZ 崩溃**：`var Ba = xa;` 被生成在 `const xa` 之前，顶层立即执行触发
   `Cannot access 'xa' before initialization`
-- **依赖认错**：`get-port`（ESM-only，`require` 直接失败）实为 `portfinder`
+- **4 个自研组件缺 `install`**：原 bundle 在 `normalizeComponent` 之后挂的，
+  导致 `<b-button>` / `<b-empty>` 被当作未知元素、渲染不出来
+- **顶层属性赋值语句丢失**（`ue.checkIfTableHasData = async function...`）：
+  与缺陷 B 同源，`he.checkIfTableHasData is not a function`
+- **依赖认错两处**：`get-port`（ESM-only）实为 `portfinder`；
+  扫码登录的 `qrcode` 实为 **`qrcodejs2`**（API 完全不同）
 
 ## macOS 适配
 

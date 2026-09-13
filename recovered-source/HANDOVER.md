@@ -65,7 +65,7 @@ recovered-source/
 | C | `router/index.js` 缺 `import store` | 已补；另补 `store/index.js` 的 `Vue.use(Vuex)` |
 | D | 残留 webpack 调用 `i(<id>)` | 5 个音频 → `assets/media/tip-*.mp3`；`i(9118)` → `import QRCode from 'qrcode'` |
 
-### 本轮新发现并修复的 8 类缺陷
+### 本轮新发现并修复的 11 类缺陷
 
 | # | 缺陷 | 现象与根因 | 修复 |
 |---|---|---|---|
@@ -76,7 +76,10 @@ recovered-source/
 | I | **模板 `v-if` 重复属性** | 反编译器把 render 里的 `a && b ? X : _e()` 拆成了 `v-if="a" v-if="b"` 两个属性 → `vue-template-compiler` 报 `duplicate attribute: v-if`（dev 构建中断） | `apply-fixes.js` 新增 `TEMPLATE_FIXES` 通用规则，合并为 `v-if="a && b"` |
 | J | **Electron 版本用错（22 → 13.6.9）** | 原版 `Bilidown.exe` 内嵌 `Chrome/91.0.4472.164`，即 **Electron 13.x**。Electron 22 **彻底移除了内置 `remote`**，导致 `window.require("electron").remote` 为 `undefined` → `te.require("fs")` 抛 `Cannot read properties of undefined` → Vue 挂载中断、界面全白 | `package.json` 锁 `electron: "13.6.9"` |
 | K | **`var Ba = xa;` 提前引用（TDZ）** | generator 在 `const xa` 定义之前也生成了一句 `var Ba = xa;`，模块顶层立即执行 → `ReferenceError: Cannot access 'xa' before initialization`（构建期发现不了，只在运行时报） | `apply-fixes.js` 删掉提前的那句，保留 `xa` 定义之后的 |
-| L | **依赖认错：`get-port` → `portfinder`** | 原代码是 `portfinder.getPortPromise({port, startPort, stopPort})`（bundle 里含 portfinder ≤1.0.34 特有的 "Native promise support is not available…" 文案）。`get-port@6` 是 ESM-only，CommonJS 主进程 `require()` 直接 `ERR_REQUIRE_ESM` | `package.json` 改 `portfinder: "1.0.32"` |
+| L | **依赖认错：`get-port` → `portfinder`** | 原代码是 `portfinder.getPortPromise({port, startPort, stopPort})`（bundle 里含 portfinder ≤1.0.34 特有的 "Native promise support is not available…" 文案）。`get-port@6` 是 ESM-only，CommonJS 主进程 `require()` 直接 `ERR_REQUIRE_ESM` | `package.json` 改为 `portfinder: "1.0.32"` |
+| M | **4 个自研组件缺 `install`** | 原 bundle 是在 `normalizeComponent` **之后**挂的 `install`（`fs.install = t => t.component(fs.name, fs)`），不在组件 options 对象里，生成器没带出来 → `main.js` 的 `Vue.use(BButton)` 无法全局注册 → 模板里的 `<b-button>` / `<b-empty>` 被当作未知自定义元素，组件渲染不出来 | `apply-fixes.js` 为 4 个组件补 `install` 方法 |
+| N | **Dexie 扩展方法 `checkIfTableHasData` 丢失** | 原 bundle 里它是顶层**属性赋值表达式语句** `ue.checkIfTableHasData = async function (t) {...}` —— 与缺陷 B 同源，生成器只索引变量/函数/类声明，这类语句被整条漏掉 → `he.checkIfTableHasData is not a function`（App 启动时用它决定是否跳转下载页） | `apply-fixes.js` 新增 `CHECK_TABLE_FN`，接到 Dexie 初始化之后 |
+| O | **依赖认错：`qrcode` → `qrcodejs2`** | 账户页扫码登录用的是 **qrcodejs**（davidshimjs QRCode.js）的 API：`new QRCode(el, {text, width, colorDark, correctLevel: QRCode.CorrectLevel.L})`、实例的 `_el` / `makeCode`。node-qrcode 没有 `CorrectLevel`、也不是这样构造的 → `Cannot read property 'L' of undefined`，二维码出不来 | `package.json` 改 `qrcodejs2: ^0.0.2` |
 
 ### 其它修正
 
@@ -187,7 +190,7 @@ node tools/apply-macos-port.js # 叠加 macOS 适配（幂等，可重复运行�
 | 主进程启动 | ✅ `Aria2 server running at: 6801` |
 | 窗口 + Chromium | ✅ 正常创建、可远程调试 |
 | **Vue 挂载 + 路由** | ✅ `#app` 内容 11273 字符，URL 已是 `/#/search`，可见文本「搜索」，无错误覆盖层 |
-| 下载功能 | ⚠️ 未验证（缺 `aria2c`，需 `brew install aria2`） |
+| 下载功能 | ⚠️ 未验证（`aria2c` 已软链 Motrix 内置引擎，但未实测真实下载） |
 | 混流/转码 | ⚠️ 未验证（`ffmpeg` 已软链，逻辑走到即可用） |
 
 ---
