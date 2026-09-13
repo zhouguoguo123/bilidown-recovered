@@ -22,3 +22,7 @@ recovered-source/bin/ffmpeg
 # ── 本机专属配置（含绝对路径，换机器需重写）──
 recovered-source/.npmrc
 recovered-source/tools/.npmrc
+
+# electron-builder 缓存与本机临时目录
+.eb-cache/
+.tmp-ud*/

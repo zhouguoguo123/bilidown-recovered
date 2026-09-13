@@ -23,6 +23,20 @@ module.exports = defineConfig({
   publicPath: './',
   assetsDir: 'assets',
   productionSourceMap: false,
+  /**
+   * moment 的 locale 裁剪。
+   *
+   * 另外记录一条踩过的坑：**不要设置 customFileProtocol**。
+   * 一旦设置，vue-cli-plugin-electron-builder 会把 publicPath 一并改成该值，
+   * 产物里就出现 `app:///assets/...` 这种绝对 URL —— 而 Chromium 会把三斜杠后的
+   * 第一段当成 host：
+   *   new URL('app:///assets/fonts/x.ttf') → host='assets', pathname='/fonts/x.ttf'
+   * 于是 CSS 里的字体全部 404（element-icons / 苹方 / iconfont）。
+   * 保持 publicPath 为 './' 输出相对路径即可：相对路径在 `app://./index.html`
+   * 下能正确解析，也正是原始包产物的形态。
+   * background.js 里的 createProtocol("app") 与 loadURL("app://./index.html")
+   * 都是硬编码的，不依赖这个选项。
+   */
   configureWebpack: {
     plugins: [
       // 原包的 chunk-vendors.js 里 `defineLocale` 出现 0 次 —— 说明构建时
@@ -37,16 +51,52 @@ module.exports = defineConfig({
   pluginOptions: {
     electronBuilder: {
       // index.html 通过自定义 app:// 协议加载
-      customFileProtocol: 'app://./',
+      // logo.ico / logo.png 放在 public/，vue-cli 会把它们复制到构建输出根，
+      // 进而打进 asar —— background.js 用 path.join(__dirname, 'logo.png') 读它们。
+      //
+      // 必须显式设为 './'。
+      //
+      // 插件（vue-cli-plugin-electron-builder/index.js:146-148）会无条件执行
+      //   options.publicPath = pluginOptions.customFileProtocol || 'app://./'
+      // 也就是说：不配置它也用默认的 'app://./'。该值经 webpack 规范化后，
+      // 产物里就成了 `app:///assets/...`，而 Chromium 会把三斜杠后的第一段当成 host：
+      //   new URL('app:///assets/fonts/x.ttf') → host='assets', pathname='/fonts/x.ttf'
+      // 于是 CSS 里的字体全部 404。设为 './' 即输出相对路径 ——
+      // 相对路径在 `app://./index.html` 下能正确解析，也正是原始包产物的形态。
+      // （background.js 里的 createProtocol("app") 与 loadURL("app://./index.html")
+      //   都是硬编码的，不受此项影响。）
+      customFileProtocol: './',
       mainProcessFile: 'src/background.js',
-      // 主进程用 path.join(__dirname, '..', 'bin', 'aria2c.exe') 定位外部程序，
-      // 所以 aria2c.exe / ffmpeg.exe / aria2c.conf 必须被复制到 resources/bin
-      extraResources: [
-        { from: 'bin', to: 'bin' }
-      ],
       builderOptions: {
         appId: 'vip.zhouql.bilidown',
         productName: 'Bilidown',
+        // 直接用 node_modules 里已解压的 Electron，别去下载。
+        // electron-builder 默认会把 electron 的 zip 缓存到
+        // ~/Library/Caches/electron（由 @electron/get 的 env-paths 固定），
+        // 该路径在受限沙箱里不可写；指定 electronDist 可完全跳过下载。
+        electronDist: 'node_modules/electron/dist',
+        // 主进程用 path.join(__dirname, '..', 'bin', 'aria2c[.exe]') 定位外部程序，
+        // 所以 aria2c / ffmpeg / aria2c.conf 必须被复制到 resources/bin。
+        // ⚠️ 必须放在 builderOptions 内 —— 放在 electronBuilder 层级不会传给 electron-builder。
+        //
+        // filter：macOS 包里不需要 Windows 的 .exe（66 MB），排除掉。
+        // 将来若要打 Windows 包，把 filter 里的 '!*.exe' 去掉即可。
+        extraResources: [
+          {
+            from: 'bin',
+            to: 'bin',
+            filter: ['**/*', '!*.exe']
+          }
+        ],
+        // 应用协议 bilidown://（background.js 里 registerProtocolAndHandleArgs 用到）。
+        // Windows 上由安装包写注册表；macOS 必须在 Info.plist 里声明 CFBundleURLTypes，
+        // 否则 setAsDefaultProtocolClient 不生效。
+        protocols: [
+          {
+            name: 'Bilidown',
+            schemes: ['bilidown']
+          }
+        ],
         // 来自原包内的 resources/app-update.yml：
         //   provider: generic / url: https://zhouql.vip / updaterCacheDirName: bilidown-updater
         publish: [
@@ -62,6 +112,23 @@ module.exports = defineConfig({
         nsis: {
           oneClick: false,
           allowToChangeInstallationDirectory: true
+        },
+        mac: {
+          target: ['dmg'],
+          icon: 'src/logo.icns',
+          category: 'public.app-category.utilities',
+          // 没有 Apple 开发者证书，明确跳过签名/公证。
+          // 代价：首次打开需右键「打开」，或执行
+          //   xattr -cr /Applications/Bilidown.app
+          identity: null
+        },
+        dmg: {
+          title: 'Bilidown',
+          // 经典的「拖进 Applications」布局
+          contents: [
+            { x: 140, y: 200, type: 'file' },
+            { x: 400, y: 200, type: 'link', path: '/Applications' }
+          ]
         }
       }
     }

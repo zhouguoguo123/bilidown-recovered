@@ -195,6 +195,77 @@ node tools/apply-macos-port.js # 叠加 macOS 适配（幂等，可重复运行�
 
 ---
 
+## 五之三、macOS 打包（.app / dmg）
+
+打包配置已在 `vue.config.js` 就绪：
+
+| 配置 | 作用 |
+|---|---|
+| `mac.target: ['dmg']` + `mac.icon: 'src/logo.icns'` | 图标由 `logo.ico` 的 256px 帧经 `sips` + `iconutil` 生成 |
+| `mac.identity: null` | 无 Apple 证书，跳过签名（未签名 app 首次打开需右键「打开」，或 `xattr -cr Bilidown.app`） |
+| `protocols` | 声明 `bilidown://`——macOS 必须在 Info.plist 里登记，否则 `setAsDefaultProtocolClient` 不生效 |
+| `extraResources` | `bin/` → `Resources/bin`（过滤掉 Windows 的 `.exe`）；**必须写在 `builderOptions` 内** |
+| `electronDist` | 直接用 `node_modules/electron/dist`，避免下载到 `~/Library/Caches/electron` |
+| `public/logo.ico` + `public/logo.png` | vue-cli 会复制到构建输出根 → 打进 asar 根，`background.js` 用 `path.join(__dirname, 'logo.*')` 读取 |
+
+### 踩过的两个坑
+
+**1. `customFileProtocol` 必须显式设为 `'./'`**
+
+插件（`vue-cli-plugin-electron-builder/index.js:146-148`）会**无条件**执行：
+
+```js
+options.publicPath = pluginOptions.customFileProtocol || 'app://./'
+```
+
+不配置它也用默认的 `'app://./'`。该值经 webpack 规范化后产物里就成了 `app:///assets/...`，
+而 **Chromium 会把三斜杠后的第一段当成 host**：
+
+```
+new URL('app:///assets/fonts/x.ttf')  → host='assets', pathname='/fonts/x.ttf'   ✗
+new URL('app://./assets/fonts/x.ttf') → host='.',      pathname='/assets/fonts/x.ttf' ✓
+```
+
+于是 CSS 里所有字体 404（element-icons / 苹方 / iconfont）。
+设为 `'./'` 后输出相对路径 —— 正是原始包产物的形态，`app://./index.html` 下可正确解析。
+
+**2. `extraResources` 放错层级不会生效**
+
+放在 `pluginOptions.electronBuilder` 下会被忽略，必须在 `builderOptions` **内部**。
+
+### 生成 dmg
+
+`hdiutil` 需要挂载卷的特权，**受限沙箱里不可用**（连最小映像都创建不了）。
+在普通终端里执行即可：
+
+```bash
+cd recovered-source
+ELECTRON_BUILDER_CACHE=/tmp/eb-cache npx vue-cli-service electron:build --mac dmg
+# 产物：dist_electron/Bilidown-1.2.7-arm64.dmg
+```
+
+沙箱内可用的等价方式（已验证）：`--mac dir` 出 `.app`，再用 `ditto` 打成 zip：
+
+```bash
+ditto -c -k --keepParent dist_electron/mac-arm64/Bilidown.app Bilidown-1.2.7-arm64.zip
+```
+
+### 打包版实测（Apple Silicon）
+
+| 项目 | 结果 |
+|---|---|
+| 加载方式 | ✅ `app://./index.html#/search`（内置资源，不依赖 dev server） |
+| 主进程 | ✅ `Aria2 server running at: 6807` |
+| 资源 404 | ✅ 0 次（修复 `customFileProtocol` 前有 3 条字体 404） |
+| 渲染错误 | ✅ 无 |
+
+> ⚠️ `Resources/bin/` 里的 `aria2c` / `ffmpeg` 是**指向本机**的软链
+> （Motrix 内置引擎 / Homebrew ffmpeg）。自己机器上可用；
+> 若要把包分发给别人，需换成分发友好的静态二进制（Homebrew 的 ffmpeg 动态链接
+> `/opt/homebrew/Cellar/...`，换机器会缺库）。
+
+---
+
 ## 六、环境注意事项（复现必读）
 
 1. **npm 缓存**：本机 `~/.npm` 混入了 root 权限文件导致 `EPERM`。
