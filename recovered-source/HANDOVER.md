@@ -266,6 +266,42 @@ ditto -c -k --keepParent dist_electron/mac-arm64/Bilidown.app Bilidown-1.2.7-arm
 
 ---
 
+## 五之四、下载页「正在恢复待下载数据…」卡死
+
+**现象**：进入下载页时，`v-loading` 的遮罩与文案一直不消失。
+
+**根因排查过程**（值得记录，因为结论反直觉）：
+
+1. 用原生 IndexedDB 直接读 `download` 表 —— **秒回**，数据正常；
+2. 直接调用组件实例的 `echoDownload()` —— **1ms 就 resolve**；
+3. 检查遮罩元素 —— 存在，但 `opacity: 0`（**已经不可见**）；
+4. 结论：`loading` 其实已经复位，遮罩只是淡出后残留了 DOM 节点。
+
+所以正常数据下**不会**卡死。真正会卡住的只有一种情况：
+
+```js
+async echoDownload() {
+  he.download.toArray().then(...).finally(() => { this.loading = false; });
+}
+```
+
+若 IndexedDB 异常导致 `toArray()` 的 Promise **永不 settle**，`.finally` 也就永不执行，
+界面会永久停在 loading。IndexedDB 损坏在混合使用不同 Chromium 版本的
+user-data-dir 后确实会出现（日志里是 `Cookie database is too new` / `Got corruption`）。
+
+**修复**：给 `echoDownload` 加 5 秒超时与错误兜底，保证 `loading` 一定复位
+（`apply-fixes.js` 里对应 `echoDownload 的健壮性修复` 规则）。
+
+**如果你也遇到**：
+
+```bash
+# 打包版 / 开发版分别清理旧的用户数据目录（会丢本地任务列表）
+rm -rf "$HOME/Library/Application Support/Bilidown"
+rm -rf "$HOME/Library/Application Support/Electron"
+```
+
+---
+
 ## 六、环境注意事项（复现必读）
 
 1. **npm 缓存**：本机 `~/.npm` 混入了 root 权限文件导致 `EPERM`。

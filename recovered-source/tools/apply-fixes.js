@@ -673,6 +673,50 @@ const IDENT_FIXES = {
     replace: 'new Plyr',
   }],
   'src/views/Download.vue': [AUDIO_NAME, NT_TO_REQUEST, KT_TO_SHELL, {
+    // echoDownload 的健壮性修复。
+    //
+    // 原实现把 loading 复位放在 .finally 里，看似安全；但若 IndexedDB 异常
+    // （例如 user-data-dir 被不同 Chromium 版本写坏，会报
+    //  "Cookie database is too new" / "Got corruption"），
+    // he.download.toArray() 的 Promise 可能永不 settle —— .finally 也就永不执行，
+    // 界面会永远停在「正在恢复待下载数据…」。
+    // 这里加 5 秒超时与错误兜底，保证 loading 一定复位。
+    find: [
+      '    async echoDownload() {',
+      '      he.download.toArray().then(async t => {',
+      '        await Pt(600);',
+      '        this.$store.commit("updateWaitDown", t);',
+      '        this.download = t;',
+      '        await Pt(1000);',
+      '      }).finally(() => {',
+      '        this.loading = false;',
+      '      });',
+      '    },',
+    ].join('\n'),
+    replace: [
+      '    async echoDownload() {',
+      '      // 见 tools/apply-fixes.js 的说明：本地数据库异常时 toArray() 可能永不 settle，',
+      '      // 必须用超时兜底，否则界面会一直停在「正在恢复待下载数据…」。',
+      '      try {',
+      '        const t = await Promise.race([',
+      '          he.download.toArray(),',
+      '          new Promise((resolve, reject) => {',
+      '            setTimeout(() => reject(new Error("读取本地任务超时")), 5000);',
+      '          })',
+      '        ]);',
+      '        await Pt(600);',
+      '        this.$store.commit("updateWaitDown", t);',
+      '        this.download = t;',
+      '        await Pt(1000);',
+      '      } catch (e) {',
+      '        console.warn("[echoDownload] 恢复待下载数据失败：", e && e.message);',
+      '        this.download = [];',
+      '      } finally {',
+      '        this.loading = false;',
+      '      }',
+      '    },',
+    ].join('\n'),
+  }, {
     // generator 在 `const xa` 定义之前就生成了一句 `var Ba = xa;`。
     // xa 是 const，模块顶层这句是立即执行的，会踩 TDZ：
     //   ReferenceError: Cannot access 'xa' before initialization

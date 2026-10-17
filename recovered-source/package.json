@@ -18,7 +18,7 @@
     "axios": "^1.6.7",
     "canvas-confetti": "^1.9.2",
     "clipboard-polyfill": "^4.1.0",
-    "dexie": "^4.0.8",
+    "dexie": "4.0.8",
     "element-ui": "^2.15.14",
     "portfinder": "1.0.32",
     "lunar-javascript": "^1.7.7",

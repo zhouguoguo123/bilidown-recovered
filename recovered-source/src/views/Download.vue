@@ -2085,14 +2085,25 @@ export default {
       zt("yes");
     },
     async echoDownload() {
-      he.download.toArray().then(async t => {
+      // 见 tools/apply-fixes.js 的说明：本地数据库异常时 toArray() 可能永不 settle，
+      // 必须用超时兜底，否则界面会一直停在「正在恢复待下载数据…」。
+      try {
+        const t = await Promise.race([
+          he.download.toArray(),
+          new Promise((resolve, reject) => {
+            setTimeout(() => reject(new Error("读取本地任务超时")), 5000);
+          })
+        ]);
         await Pt(600);
         this.$store.commit("updateWaitDown", t);
         this.download = t;
         await Pt(1000);
-      }).finally(() => {
+      } catch (e) {
+        console.warn("[echoDownload] 恢复待下载数据失败：", e && e.message);
+        this.download = [];
+      } finally {
         this.loading = false;
-      });
+      }
     },
     async pauseTask(t) {
       if (t.gid) {
