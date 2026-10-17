@@ -673,6 +673,20 @@ const IDENT_FIXES = {
     replace: 'new Plyr',
   }],
   'src/views/Download.vue': [AUDIO_NAME, NT_TO_REQUEST, KT_TO_SHELL, {
+    // 模板变量误用：原始 render 里 el-select 的 v-model 是
+    //   model: { value: i.aModel, callback: e => t.$set(i, "aModel", e),
+    //            expression: "v.aModel" }
+    // 注意 value/callback 都绑定 i，只有 expression（给 devtools 看的元数据）
+    // 写成了 "v.aModel"——原作者遗留的不一致。
+    // 反编译器照着 expression 生成了 v-model="v.aModel"，而模板里根本没有 v
+    // 这个变量，渲染时抛 Cannot read property 'aModel' of undefined，
+    // 整条 v-for 中断，列表就空了（空状态 b-empty 在抛错前已创建，仍显示）。
+    find: 'v-model="v.aModel"',
+    replace: 'v-model="i.aModel"',
+  }, {
+    find: 'v-model="v.vModel"',
+    replace: 'v-model="i.vModel"',
+  }, {
     // echoDownload 的健壮性修复。
     //
     // 原实现把 loading 复位放在 .finally 里，看似安全；但若 IndexedDB 异常

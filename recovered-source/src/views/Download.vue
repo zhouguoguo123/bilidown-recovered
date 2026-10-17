@@ -77,13 +77,13 @@
                   </span>
                   <span class="videoQn">
                     音质： 
-                    <el-select v-model="v.aModel" size="mini" :placeholder="i.aSelect" @change="qnChange('audio', i)">
+                    <el-select v-model="i.aModel" size="mini" :placeholder="i.aSelect" @change="qnChange('audio', i)">
                       <el-option v-for="t in i.amap" :value="qnDesc" :key="qnDesc" />
                     </el-select>
                   </span>
                   <span class="audioQn">
                     画质： 
-                    <el-select v-model="v.vModel" size="mini" :placeholder="i.vSelect" @change="qnChange('video', i)">
+                    <el-select v-model="i.vModel" size="mini" :placeholder="i.vSelect" @change="qnChange('video', i)">
                       <el-option v-for="t in i.vmap" :value="qnDesc" :key="qnDesc" />
                     </el-select>
                   </span>

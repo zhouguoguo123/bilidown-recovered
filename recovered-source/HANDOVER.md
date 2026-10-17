@@ -302,6 +302,50 @@ rm -rf "$HOME/Library/Application Support/Electron"
 
 ---
 
+## 五之五、下载页列表为空但侧边栏角标显示数量
+
+**现象**：数据已经进了 store（侧边栏 `el-badge` 显示 1），但下载页列表空、只显示「啥也没有」。
+注意这与上一节的 Loading 卡死是**两个不同的问题**。
+
+**根因**：模板里有两处 `v-model` 绑定到了一个不存在的变量 `v`：
+
+```html
+<li v-for="(i, a) in download" ...>
+  <el-select v-model="v.aModel" ...>   <!-- v 未定义 -->
+  <el-select v-model="v.vModel" ...>
+```
+
+原始 render 里是这样的：
+
+```js
+model: {
+  value: i.aModel,                              // 真正绑定的是 i
+  callback: function (e) { t.$set(i, "aModel", e) },
+  expression: "v.aModel"                        // 只是给 devtools 看的元数据
+}
+```
+
+`value` / `callback` 都绑定 `i`，唯独 `expression` 写成了 `v.aModel`（原作者遗留的不一致）。
+反编译器照着 `expression` 生成了 `v-model="v.aModel"`，于是渲染时：
+
+```
+TypeError: Cannot read property 'aModel' of undefined
+  at render 函数
+  at _l (v-for)
+```
+
+**整条 `v-for` 中断**，`<ul>` 变空；而 `<b-empty v-show="!download.length">` 在抛错前
+已经创建，于是「啥也没有」照常显示 —— 这就是「角标有数、列表却空」的成因。
+
+**修复**：`v-model="i.aModel"` / `v-model="i.vModel"`（`apply-fixes.js` 里有对应规则）。
+
+**校验盲区**：`tools/validate-src.js` 只做脚本作用域检查，**不检查模板表达式**，
+所以这类「模板引用了不存在的变量」的缺陷它发现不了，只能靠运行时暴露。
+若将来再加静态检查，可以对每个 `<li v-for="(i, a) in X">` / `v-for="i in X"`
+的作用域收集可用变量，再校验模板表达式中出现的根标识符。
+
+---
+
 ## 六、环境注意事项（复现必读）
 
 1. **npm 缓存**：本机 `~/.npm` 混入了 root 权限文件导致 `EPERM`。
