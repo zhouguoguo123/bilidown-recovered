@@ -618,6 +618,15 @@ const EXTRA_CODE = {
  */
 const TEMPLATE_FIXES = [
   { find: /v-if="([^"]+)"(\s+)v-if="([^"]+)"/g, replace: 'v-if="$1 && $3"' },
+  {
+    // 反编译把 render 里的
+    //   on: { "update:visible": function (e) { this.x = e } }
+    // 展开成了模板属性 @update:visible="x = e"，
+    // 但模板作用域里没有 e（事件对象在模板里是 $event）。
+    // 不修的话，对话框关闭等动作会在触发事件时报错。
+    find: /(@update:[a-zA-Z-]+=")([A-Za-z_$][\w$.]*)\s*=\s*e\b/g,
+    replace: '$1$2 = $event',
+  },
 ];
 
 /** 生成器留下的死代码（`nt` 已被 request 取代） */
@@ -673,6 +682,61 @@ const IDENT_FIXES = {
     replace: 'new Plyr',
   }],
   'src/views/Download.vue': [AUDIO_NAME, NT_TO_REQUEST, KT_TO_SHELL, {
+    // 恢复的任务缺 audio/video/amap/vmap 字段（Dexie schema 里没有它们，
+    // 只有 audioFullPath/videoFullPath/vmap），而 downAllTask 在获取下载链接
+    // 之前就会访问 t.audio.length，于是抛 Cannot read property 'length' of undefined，
+    // 点了「下载视频」毫无反应。原版在「搜索页添加→立刻下载」的路径下 audio 是 []
+    // 所以不暴露，只有从数据库恢复的任务会踩到。
+    find: [
+      '      ]);',
+      '      await Pt(600);',
+      '      this.$store.commit("updateWaitDown", t);',
+    ].join('\n'),
+    replace: [
+      '      ]);',
+      '      // 补全恢复任务里可能缺失的字段，避免下载时读取 undefined.length',
+      '      t.forEach((item) => {',
+      '        if (!item.audio) item.audio = [];',
+      '        if (!item.video) item.video = [];',
+      '        if (!item.amap) item.amap = [];',
+      '        if (!item.vmap) item.vmap = [];',
+      '        if (!item.taskStack) item.taskStack = [];',
+      '        if (!item.taskStackCache) item.taskStackCache = [];',
+      '      });',
+      '      await Pt(600);',
+      '      this.$store.commit("updateWaitDown", t);',
+    ].join('\n'),
+  }, {
+    // downAllTask / addDownTask 里的 t.audio.length 加防御（双保险）。
+    // 用正则全局替换：IDENT_FIXES 用的是 String.replace，
+    // 字符串 find 只会替换第一处。
+    find: /if \(t\.audio\.length\)/g,
+    replace: 'if (t.audio && t.audio.length)',
+    all: true,
+  }, {
+    find: /if \(!t\.audio\.length &&/g,
+    replace: 'if (!(t.audio && t.audio.length) &&',
+    all: true,
+  }, {
+    find: /else if \(t\.audio\.length &&/g,
+    replace: 'else if (t.audio && t.audio.length &&',
+    all: true,
+  }, {
+    find: /if \(t\.video\.length\)/g,
+    replace: 'if (t.video && t.video.length)',
+    all: true,
+  }, {
+    // el-option 的 value/key 丢了 v-for 别名前缀。
+    // 原始 render: t._l(i.amap, function(t){ return e("el-option",
+    //   {key: t.qnDesc, attrs: {value: t.qnDesc}}) })
+    // 模板却写成 :value="qnDesc"（缺少 t.），qnDesc 未定义 → el-select 渲染报错，
+    // 清晰度/音质下拉列表因此显示不出来。
+    find: '<el-option v-for="t in i.amap" :value="qnDesc" :key="qnDesc" />',
+    replace: '<el-option v-for="t in i.amap" :value="t.qnDesc" :key="t.qnDesc" />',
+  }, {
+    find: '<el-option v-for="t in i.vmap" :value="qnDesc" :key="qnDesc" />',
+    replace: '<el-option v-for="t in i.vmap" :value="t.qnDesc" :key="t.qnDesc" />',
+  }, {
     // 模板变量误用：原始 render 里 el-select 的 v-model 是
     //   model: { value: i.aModel, callback: e => t.$set(i, "aModel", e),
     //            expression: "v.aModel" }

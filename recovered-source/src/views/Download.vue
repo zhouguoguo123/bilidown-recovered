@@ -78,13 +78,13 @@
                   <span class="videoQn">
                     音质： 
                     <el-select v-model="i.aModel" size="mini" :placeholder="i.aSelect" @change="qnChange('audio', i)">
-                      <el-option v-for="t in i.amap" :value="qnDesc" :key="qnDesc" />
+                      <el-option v-for="t in i.amap" :value="t.qnDesc" :key="t.qnDesc" />
                     </el-select>
                   </span>
                   <span class="audioQn">
                     画质： 
                     <el-select v-model="i.vModel" size="mini" :placeholder="i.vSelect" @change="qnChange('video', i)">
-                      <el-option v-for="t in i.vmap" :value="qnDesc" :key="qnDesc" />
+                      <el-option v-for="t in i.vmap" :value="t.qnDesc" :key="t.qnDesc" />
                     </el-select>
                   </span>
                 </div>
@@ -257,7 +257,7 @@
             </div>
           </li>
           <li v-if="totalCount > 15" class="pagination">
-            <el-pagination background :page-size="pageSize" :current-page="currentPage" layout="prev, pager, next" :total="totalCount" @current-change="handlerCurrentChange" @update:currentPage="currentPage = e" @update:current-page="currentPage = e" />
+            <el-pagination background :page-size="pageSize" :current-page="currentPage" layout="prev, pager, next" :total="totalCount" @current-change="handlerCurrentChange" @update:currentPage="currentPage = $event" @update:current-page="currentPage = $event" />
           </li>
         </ul>
         <b-empty v-show="!downloaded.length" size="big">
@@ -266,10 +266,10 @@
       </div>
     </el-tab-pane>
   </el-tabs>
-  <el-dialog v-if="previewVideoVisible" :title="previewVideoTitle" :visible="previewVideoVisible" @close="handlerClose" @update:visible="previewVideoVisible = e">
+  <el-dialog v-if="previewVideoVisible" :title="previewVideoTitle" :visible="previewVideoVisible" @close="handlerClose" @update:visible="previewVideoVisible = $event">
     <b-player v-if="previewVideoVisible" :videoSource="previewVideoSrc" ref="plyrPlayer" />
   </el-dialog>
-  <el-dialog title="自定义批量提示" :visible="selectDownContentDialogVisible" class="push-all" @update:visible="selectDownContentDialogVisible = e">
+  <el-dialog title="自定义批量提示" :visible="selectDownContentDialogVisible" class="push-all" @update:visible="selectDownContentDialogVisible = $event">
     <span>
       请勾选你想要批量下载的类型，然后点击开始下载开始吧！
     </span>
@@ -2679,18 +2679,18 @@ export default {
             t.taskStackCache.push("音频");
             t.taskStackCache.push("删除aac");
           }
-          if (!t.audio.length && this.downContentType.includes("音频")) {
+          if (!(t.audio && t.audio.length) && this.downContentType.includes("音频")) {
             const e = t.taskStack.indexOf("音频");
             if (e !== -1) {
               t.taskStack.splice(e, 1);
               t.taskStackCache.splice(e, 1);
             }
-          } else if (t.audio.length && this.downContentType.includes("有声视频") && !this.downContentType.includes("音频")) {
+          } else if (t.audio && t.audio.length && this.downContentType.includes("有声视频") && !this.downContentType.includes("音频")) {
             t.taskStack.push("音频+");
             t.taskStackCache.push("音频+");
             t.taskStack.push("混流");
             t.taskStackCache.push("混流");
-          } else if (t.audio.length && this.downContentType.includes("有声视频")) {
+          } else if (t.audio && t.audio.length && this.downContentType.includes("有声视频")) {
             t.taskStack.push("混流");
             t.taskStackCache.push("混流");
           }
@@ -2713,7 +2713,7 @@ export default {
         this.generateFolderPath(t, ["视频"]);
         t.taskStack = [];
         t.taskStackCache = [];
-        if (t.audio.length) {
+        if (t.audio && t.audio.length) {
           t.taskStack.push("音频+");
           t.taskStackCache.push("音频+");
           t.taskStack.push("混流");
@@ -2736,7 +2736,7 @@ export default {
       }
       t.taskStack = [];
       t.taskStackCache = [];
-      if (t.audio.length) {
+      if (t.audio && t.audio.length) {
         t.taskStack.push("音频+");
         t.taskStackCache.push("音频+");
         t.taskStack.push("混流");
@@ -3369,7 +3369,7 @@ export default {
       if (this.musicStatus === "pending") {
         try {
           this.musicStatus = "active";
-          if (t.audio.length) {
+          if (t.audio && t.audio.length) {
             if (t.asize !== 0 && Zt(t.asize) > 31457280) {
               $notify.info("音频较大，推荐使用上方按钮“自定义批量”进行下载。", 5000);
               return;

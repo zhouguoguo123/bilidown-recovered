@@ -346,6 +346,58 @@ TypeError: Cannot read property 'aModel' of undefined
 
 ---
 
+## 五之六、清晰度/音质下拉框不显示、点下载没反应
+
+### ① 下拉列表没了：`el-option` 丢了 v-for 别名前缀
+
+原始 render：
+
+```js
+t._l(i.amap, function (t) { return e("el-option", { key: t.qnDesc, attrs: { value: t.qnDesc } }) })
+```
+
+模板却被还原成 `:value="qnDesc"`（缺少 `t.`）。`qnDesc` 未定义 → `el-select` 渲染报错 →
+清晰度/音质下拉整个消失。
+
+**修复**：`:value="t.qnDesc"` / `:key="t.qnDesc"`。
+
+### ② 点「下载视频」没反应：恢复的任务缺 `audio` 字段
+
+Dexie 的 `download` schema 里只有 `audioFullPath` / `videoFullPath` / `vmap`，
+**没有 `audio` / `video` / `amap`**。而 `downAllTask()` 在获取下载链接之前就访问：
+
+```js
+if (t.audio.length) { ... }   // t.audio 是 undefined → TypeError
+```
+
+「搜索页添加 → 立刻下载」这条路径上 `audio` 初始为 `[]`，所以原版不暴露；
+**只有从数据库恢复的任务会踩到**，表现就是点下载毫无反应（控制台有 TypeError）。
+
+**修复**（两层）：
+
+1. `echoDownload()` 恢复数据后补全缺失字段（`audio/video/amap/vmap/taskStack/taskStackCache`）；
+2. `downAllTask` / `addDownTask` 里所有 `t.audio.length` / `t.video.length` 加防御。
+
+> 下载链接本身是在 `updateAudioVideoDownLink()` 里通过 B 站 API 现场获取的
+> （生成 `amap`/`vmap` 并按 `aModel`/`vModel` 选出 `audio`/`video`），
+> 所以补 `[]` 不会影响后续真正下载。
+
+### 实测（打包版）
+
+```
+aria2 getVersion → 1.36.0（Motrix 内置引擎，secret=zhouql 匹配）
+缺字段任务 downAllTask → 成功（修复前抛 Cannot read property 'length' of undefined）
+完整数据 downAllTask → 成功
+```
+
+### 新增工具：`tools/validate-template.js`
+
+专门补 `validate-src.js` 的盲区——**模板表达式**里的未定义变量。
+它会解析模板 AST、维护 `v-for` / `slot-scope` 作用域栈，并用 Babel 解析表达式收集
+自由标识符，与组件选项（含 `...mapState` 展开）比对。上面 ① 就是它扫出来的。
+
+---
+
 ## 六、环境注意事项（复现必读）
 
 1. **npm 缓存**：本机 `~/.npm` 混入了 root 权限文件导致 `EPERM`。

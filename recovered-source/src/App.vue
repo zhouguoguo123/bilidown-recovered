@@ -60,7 +60,7 @@
       <router-view @shutdown="shutdownHandler" />
     </keep-alive>
   </div>
-  <el-dialog title="关机提示" :visible="shutdownTipDialogVisible" class="shutdown-dialog" @update:visible="shutdownTipDialogVisible = e">
+  <el-dialog title="关机提示" :visible="shutdownTipDialogVisible" class="shutdown-dialog" @update:visible="shutdownTipDialogVisible = $event">
     <p>
       你在
       <span>

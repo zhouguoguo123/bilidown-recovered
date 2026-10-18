@@ -314,7 +314,7 @@
         </div>
       </div>
     </div>
-    <el-dialog title="自定义文件命名设置" :visible="renameDialogVisible" class="rename-dialog" @update:visible="renameDialogVisible = e">
+    <el-dialog title="自定义文件命名设置" :visible="renameDialogVisible" class="rename-dialog" @update:visible="renameDialogVisible = $event">
       <p class="desc-text">
         此设置用于自定义下载文件名，支持以下变量。点击变量可快速添加到输入框，或手动输入命名规则，保存后即可生效。
       </p>
@@ -483,7 +483,7 @@
         </b-button>
       </span>
     </el-dialog>
-    <el-dialog title="存储高级设置" :visible="folderRenameDialogVisible" class="rename-folder-dialog" @update:visible="folderRenameDialogVisible = e" @close="closeFoldersRenameDialog">
+    <el-dialog title="存储高级设置" :visible="folderRenameDialogVisible" class="rename-folder-dialog" @update:visible="folderRenameDialogVisible = $event" @close="closeFoldersRenameDialog">
       <p class="desc-text">
         此设置便于对下载的文件归档，支持以下文件夹变量。若要根据UP主昵称动态创建文件夹，可点击变量按钮快速添加或手动输入自定义配置。支持多个变量组合，保存后即可生效。
       </p>
