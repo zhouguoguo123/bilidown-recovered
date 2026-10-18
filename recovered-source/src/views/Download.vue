@@ -1741,8 +1741,8 @@ function Gt(t) {
   if (!t) return "bilidown文件夹重命名" + Ut();
   t = String(t);
   t = t.trim();
-  t = t.replace(/[/\|:*?"<>]+/g, "");
-  let e = t.replace(/.*$/g, "");
+  t = t.replace(/[/\\|:*?"<>]+/g, "");
+  let e = t.replace(/\.*$/g, "");
   e = e.trim();
   const i = 205;
   const a = new TextEncoder().encode(e);
