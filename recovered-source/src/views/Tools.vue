@@ -301,9 +301,6 @@ function va(t, e = 2) {
 function Qa(t) {
   if (process.platform === "win32") {
     Fa(`explorer /select,"${t}"`);
-  } else if (process.platform === "darwin") {
-    // macOS 没有 explorer；open -R 在 Finder 中定位该文件
-    Fa(`open -R "${t}"`);
   }
 }
 
@@ -503,7 +500,7 @@ export default {
       if (this.audioFormatBtnText !== "开始") {
         return;
       }
-      const t = ss.join(__dirname.replace(/electron\.asar(\\|\/)renderer/, "app.asar"), "..", "bin", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
+      const t = ss.join(__dirname.replace(/electron\.asar(\\|\/)renderer/, "app.asar"), "..", "bin", "ffmpeg.exe");
       const e = `"${this.audioSource}"`;
       const i = ss.join(this.audioTarget, ss.basename(this.audioSource, ss.extname(this.audioSource)) + ".mp3");
       const a = `${t} -i ${e} -q:a 0 -map a "${i}"`;
@@ -659,7 +656,7 @@ export default {
       }
       this.mix.btnText = "正在尝试混流中...";
       let a = ss.join(this.mix.targetPath, `${Jt()}-bilidown-tools-mixing-${Ut()}.mp4`);
-      const s = ss.join(__dirname.replace(/electron\.asar(\\|\/)renderer/, "app.asar"), "..", "bin", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
+      const s = ss.join(__dirname.replace(/electron\.asar(\\|\/)renderer/, "app.asar"), "..", "bin", "ffmpeg.exe");
       let n = `"${s}" -y -i "${this.mix.audioPath}" -i "${this.mix.videoPath}" -strict -2 -acodec copy -vcodec copy -f mp4 "${a}"`;
       try {
         await this.runFFmpegCommand(n);

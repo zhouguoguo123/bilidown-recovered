@@ -50,7 +50,7 @@ function registerProtocolAndHandleArgs(argv) {
 }
 async function startAria2(notifyRenderer = false) {
   let confPath = path.join(__dirname, "..", "bin", "aria2c.conf");
-  const aria2cPath = path.join(__dirname, "..", "bin", process.platform === "win32" ? "aria2c.exe" : "aria2c");
+  const aria2cPath = path.join(__dirname, "..", "bin", "aria2c.exe");
   aria2Port = await async function (startPort = 6801, stopPort = 10000) {
     return await portfinder.getPortPromise({
       port: startPort,
@@ -105,7 +105,7 @@ if (gotTheLock) {
         useContentSize: true,
         center: true,
         frame: false,
-        icon: path.join(__dirname, process.platform === "win32" ? "logo.ico" : "logo.png"),
+        icon: path.join(__dirname, "logo.ico"),
         webPreferences: {
           spellcheck: false,
           webSecurity: false,
@@ -142,17 +142,13 @@ if (gotTheLock) {
         };
         await loadProduction();
       }
-      // 278 = WM_CLIPBOARDUPDATE，是 Windows 专有窗口消息；
-      // macOS / Linux 上没有这个 API，直接跳过（原版这里是未捕获异常）。
-      if (process.platform === "win32" && typeof win.hookWindowMessage === "function") {
-        win.hookWindowMessage(278, function () {
-          win.setEnabled(false);
-          setTimeout(() => {
-            win.setEnabled(true);
-          }, 100);
-          return true;
-        });
-      }
+      win.hookWindowMessage(278, function () {
+        win.setEnabled(false);
+        setTimeout(() => {
+          win.setEnabled(true);
+        }, 100);
+        return true;
+      });
     }();
     registerProtocolAndHandleArgs(process.argv);
     win.webContents.on("before-input-event", (event, input) => {
@@ -176,15 +172,10 @@ ipcMain.on("clearCookie", async () => session.defaultSession.clearStorageData({
 }));
 ipcMain.on("restart-aria2", () => startAria2(true));
 ipcMain.on("shutdown", () => {
-  // Windows 用 shutdown，macOS 走 AppleScript（不额外要 sudo）
-  const shutdownCommand = process.platform === "win32"
-    ? "shutdown /s /t 0"
-    : `osascript -e 'tell app "System Events" to shut down'`;
-  exec(shutdownCommand, error => win.webContents.send("shutdown-result", !error));
+  exec("shutdown /s /t 0", error => win.webContents.send("shutdown-result", !error));
 });
 ipcMain.on("startUpdate", async (event, arg) => {
-  // 更新源只有 Windows(NSIS) 构建，其它平台下载到也无法安装，直接忽略
-  if (process.platform !== "win32") return;
+
   autoUpdater.setFeedURL("https://zhouql.vip/bdupdate/win32");
   autoUpdater.checkForUpdates();
   autoUpdater.on("download-progress", progress => {
@@ -212,7 +203,7 @@ ipcMain.on("updateApp", async () => {
 ipcMain.on("getAria2Port", () => aria2Port && win.webContents.send("Aria2Port", aria2Port));
 ipcMain.on("check-tray-status", (event, enabled) => {
   if (enabled && !tray) {
-    tray = new Tray(path.join(__dirname, process.platform === "win32" ? "logo.ico" : "logo.png"));
+    tray = new Tray(path.join(__dirname, "logo.ico"));
     const contextMenu = Menu.buildFromTemplate([{
       label: "关于",
       click: function () {

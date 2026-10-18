@@ -245,12 +245,7 @@ function Xt() {
 }
 
 async function $t() {
-  // 更新源只发布 Windows 构建；其它平台直接回当前版本，避免 404 与误报有更新
-  if (process.platform !== "win32") {
-    return {
-      data: `version: ${fe.app.getVersion()}`
-    };
-  }
+
   return request.get(`https://zhouql.vip/bdupdate/win32/latest.yml?${new Date().getTime()}`);
 }
 

@@ -1541,9 +1541,6 @@ async function Ra(t, e, i) {
 function Qa(t) {
   if (process.platform === "win32") {
     Fa(`explorer /select,"${t}"`);
-  } else if (process.platform === "darwin") {
-    // macOS 没有 explorer；open -R 在 Finder 中定位该文件
-    Fa(`open -R "${t}"`);
   }
 }
 
@@ -2299,7 +2296,7 @@ export default {
         this.errorHandler(t, "音频不存在或已被删除。| 两秒后将退回待下载。");
         return ha;
       }
-      const a = Ja.join(__dirname.replace(/electron\.asar(\\|\/)renderer/, "app.asar"), "..", "bin", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
+      const a = Ja.join(__dirname.replace(/electron\.asar(\\|\/)renderer/, "app.asar"), "..", "bin", "ffmpeg.exe");
       const s = `${t.formatName}.mp3`;
       const n = await this.fileExistPromise(Ja.join(t.downloadFolder, s));
       let o = "";
@@ -2359,7 +2356,7 @@ export default {
         return ha;
       }
       let n = Ja.join(t.downloadFolder, `${t.bv}-${t.cid}.mp4`);
-      const o = Ja.join(__dirname.replace(/electron\.asar(\\|\/)renderer/, "app.asar"), "..", "bin", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
+      const o = Ja.join(__dirname.replace(/electron\.asar(\\|\/)renderer/, "app.asar"), "..", "bin", "ffmpeg.exe");
       let r = `"${o}" -y -i "${e}" -i "${i}" -strict -2 -acodec copy -vcodec copy -f mp4 "${n}"`;
       try {
         t.videoFullPath = n;
